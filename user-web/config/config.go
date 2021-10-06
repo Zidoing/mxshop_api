@@ -9,4 +9,9 @@ type ServerConfig struct {
 	Name        string        `mapstructure:"name"`
 	Port        int           `mapstructure:"port"`
 	UserSrvInfo UserSrvConfig `mapstructure:"user_srv"`
+	JWTInfo     JWTConfig     `mapstructure:"jwt"`
+}
+
+type JWTConfig struct {
+	SigningKey string `mapstructure:"key"`
 }

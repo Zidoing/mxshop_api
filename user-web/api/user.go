@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"go.uber.org/zap"
@@ -12,6 +13,8 @@ import (
 	"mxshop_api/user-web/forms"
 	"mxshop_api/user-web/global"
 	"mxshop_api/user-web/global/response"
+	"mxshop_api/user-web/middlewares"
+	"mxshop_api/user-web/models"
 	"mxshop_api/user-web/proto"
 	"net/http"
 	"strconv"
@@ -81,6 +84,9 @@ func GetUserList(ctx *gin.Context) {
 		zap.S().Errorw("[GetUserList] 连接 [用户服务失败]", "msg", err.Error())
 	}
 
+	claims, _ := ctx.Get("claims")
+	currentUser := claims.(*models.CustomClaims)
+	zap.S().Infof("访问用户:%d", currentUser.ID)
 	userSrvClient := proto.NewUserClient(userConn)
 
 	zap.S().Debug("获取用户列表页")
@@ -158,8 +164,31 @@ func PassWordLogin(c *gin.Context) {
 			})
 		} else {
 			if passRsp.Success {
-				c.JSON(http.StatusOK, map[string]string{
-					"msg": "登录成功",
+				j := middlewares.NewJWT()
+				claims := models.CustomClaims{
+					ID:          uint(rsp.Id),
+					NickName:    rsp.NickName,
+					AuthorityId: uint(rsp.Role),
+					StandardClaims: jwt.StandardClaims{
+						ExpiresAt: time.Now().Unix() + 60*60*24*30,
+						Issuer:    "daodao",
+						NotBefore: time.Now().Unix(),
+					},
+				}
+
+				token, err := j.CreateToken(claims)
+				if err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{
+						"msg": "生成token失败",
+					})
+				}
+
+				c.JSON(http.StatusOK, gin.H{
+					"id":         rsp.Id,
+					"nick_name":  rsp.NickName,
+					"expired_at": (time.Now().Unix() + 60*60*24*30) * 1000,
+					"msg":        "登录成功",
+					"token":      token,
 				})
 			} else {
 				c.JSON(http.StatusBadRequest, map[string]string{
