@@ -8,8 +8,10 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"mxshop_api/user-web/global/response"
 	"mxshop_api/user-web/proto"
 	"net/http"
+	"time"
 )
 
 func HandleGrpcErrorToHttp(err error, c *gin.Context) {
@@ -29,9 +31,13 @@ func HandleGrpcErrorToHttp(err error, c *gin.Context) {
 				c.JSON(http.StatusBadRequest, gin.H{
 					"msg": "参数错误",
 				})
+			case codes.Unavailable:
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"msg": "用户服务不可用",
+				})
 			default:
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"msg": "其他错误",
+					"msg": "其他错误" + e.Message(),
 				})
 			}
 			return
@@ -63,17 +69,16 @@ func GetUserList(ctx *gin.Context) {
 
 	result := make([]interface{}, 0)
 	for _, value := range rsp.Data {
-		data := make(map[string]interface{})
-		data["id"] = value.Id
-		data["name"] = value.NickName
-		data["birthday"] = value.BirthDay
-		data["gender"] = value.Gender
-		data["mobile"] = value.Mobile
-
-		result = append(result, data)
-
+		fmt.Println(value.BirthDay)
+		user := response.UserResponse{
+			Id:       value.Id,
+			NickName: value.NickName,
+			Birthday: response.JsonTime(time.Unix(int64(value.BirthDay), 0)),
+			Gender:   value.Gender,
+			Mobile:   value.Mobile,
+		}
+		result = append(result, user)
 	}
-
 	ctx.JSON(http.StatusOK, result)
 
 }
