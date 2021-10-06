@@ -2,19 +2,38 @@ package main
 
 import (
 	"fmt"
+	"github.com/gin-gonic/gin/binding"
+	ut "github.com/go-playground/universal-translator"
+	"github.com/go-playground/validator/v10"
 	"go.uber.org/zap"
 	"mxshop_api/user-web/global"
 	"mxshop_api/user-web/initialize"
+	mx_validator "mxshop_api/user-web/validator"
 )
 
 func main() {
+	// 初始化日志
 	initialize.InitLogger()
+	// 初始化配置
 	initialize.InitConfig()
+	// 初始化翻译
 	err := initialize.InitTrans("zh")
 	if err != nil {
 		panic(err)
 	}
+	// 注册验证器
+	v, ok := binding.Validator.Engine().(*validator.Validate)
+	if ok {
+		_ = v.RegisterValidation("mobile", mx_validator.ValidateMobile)
+		_ = v.RegisterTranslation("mobile", global.Trans, func(ut ut.Translator) error {
+			return ut.Add("required", "{0} 非法的手机号码!", true)
+		}, func(ut ut.Translator, fe validator.FieldError) string {
+			t, _ := ut.T("required", fe.Field())
+			return t
+		})
+	}
 
+	// 初始化路由
 	r := initialize.Routers()
 	err = r.Run(fmt.Sprintf(":%d", global.ServerConfig.Port))
 	zap.S().Infof("启动服务器 端口:%d", global.ServerConfig.Port)
