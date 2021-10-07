@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <script src="http://libs.baidu.com/jquery/2.0.0/jquery.min.js"></script>
+</head>
+<body>
+<button type="button" id="query">查询</button>
+<div id="content" style="background-color: aquamarine;width: 300px;height: 500px">
+</div>
+</body>
+<script>
+    $("#query").click(function () {
+        $.ajax({
+            url: "http://127.0.0.1:8021/u/v1/user/list",
+            dataType: "json",
+            type: "get",
+            before: function (request) {
+                request.setRequestHeader("x-token", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJJRCI6MSwiTmlja05hbWUiOiJib2J5MCIsIkF1dGhvcml0eUlkIjoyLCJleHAiOjE2MzYxMDQ5NTIsImlzcyI6ImRhb2RhbyIsIm5iZiI6MTYzMzUxMjk1Mn0.OgpiUnw-WuLxMrmmT9da5ZwxFCS9jOhiNbf8eDfeTDU")
+            },
+            success: function (result) {
+                console.log(result.data)
+                $("#content").text(result.data)
+            },
+            error: function (data) {
+                alert("请求出错")
+            }
+
+        })
+    })
+</script>
+</html>

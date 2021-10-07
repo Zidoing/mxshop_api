@@ -11,5 +11,6 @@ func InitBaseRouter(Router *gin.RouterGroup) {
 	zap.S().Info("配置用户相关的router")
 	{
 		BaseRouter.GET("captcha", api.GetCaptCha)
+		BaseRouter.POST("send_sms", api.SendSms)
 	}
 }
