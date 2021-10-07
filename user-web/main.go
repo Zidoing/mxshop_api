@@ -8,6 +8,7 @@ import (
 	"go.uber.org/zap"
 	"mxshop_api/user-web/global"
 	"mxshop_api/user-web/initialize"
+	"mxshop_api/user-web/utils"
 	mx_validator "mxshop_api/user-web/validator"
 )
 
@@ -18,6 +19,15 @@ func main() {
 	initialize.InitConfig()
 	// 初始化服务
 	initialize.InitSrvConn()
+
+	debug := initialize.GetEnvInfo("MXSHOP_DEBUG")
+	if !debug {
+		port, err := utils.GetFreePort()
+		if err == nil {
+			global.ServerConfig.Port = port
+		}
+	}
+
 	// 初始化翻译
 	err := initialize.InitTrans("zh")
 	if err != nil {
