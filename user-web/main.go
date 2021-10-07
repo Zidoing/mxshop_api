@@ -16,6 +16,8 @@ func main() {
 	initialize.InitLogger()
 	// 初始化配置
 	initialize.InitConfig()
+	// 初始化服务
+	initialize.InitSrvConn()
 	// 初始化翻译
 	err := initialize.InitTrans("zh")
 	if err != nil {
