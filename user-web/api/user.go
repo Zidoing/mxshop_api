@@ -6,6 +6,7 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"github.com/go-redis/redis/v8"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -54,7 +55,7 @@ func HandleGrpcErrorToHttp(err error, c *gin.Context) {
 				})
 			default:
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"msg": "其他错误" + e.Message(),
+					"msg": "其他错误:" + e.Message(),
 				})
 			}
 			return
@@ -65,7 +66,7 @@ func HandleGrpcErrorToHttp(err error, c *gin.Context) {
 func HandleValidatorError(c *gin.Context, err error) {
 	errs, ok := err.(validator.ValidationErrors)
 	if !ok {
-		c.JSON(http.StatusOK, gin.H{
+		c.JSON(http.StatusBadRequest, gin.H{
 			"msg": err.Error(),
 		})
 	}
@@ -207,5 +208,79 @@ func PassWordLogin(c *gin.Context) {
 		}
 
 	}
+}
 
+func Register(c *gin.Context) {
+	registerForm := forms.RegisterForm{}
+	err := c.ShouldBind(&registerForm)
+	if err != nil {
+		HandleValidatorError(c, err)
+		return
+	}
+
+	rdb := redis.NewClient(&redis.Options{
+		Addr: fmt.Sprintf("%s:%d", global.ServerConfig.RedisInfo.Host, global.ServerConfig.RedisInfo.Port),
+	})
+	value, err := rdb.Get(context.Background(), registerForm.Mobile).Result()
+	if err == redis.Nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code": "验证码错误",
+		})
+		return
+	}
+
+	if value != registerForm.Code {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code": "验证码错误",
+		})
+	}
+
+	userConn, err := grpc.Dial(fmt.Sprintf("%s:%d",
+		global.ServerConfig.UserSrvInfo.Host,
+		global.ServerConfig.UserSrvInfo.Port,
+	), grpc.WithInsecure())
+	if err != nil {
+		zap.S().Errorw("[GetUserList] 连接 [用户服务失败]", "msg", err.Error())
+	}
+
+	userSrvClient := proto.NewUserClient(userConn)
+
+	rsp, err := userSrvClient.CreateUser(context.Background(), &proto.CreateUserInfo{
+		NickName: registerForm.Mobile,
+		Password: registerForm.Password,
+		Mobile:   registerForm.Mobile,
+	})
+
+	if err != nil {
+		zap.S().Errorw("[Register] 创建user失败")
+		HandleGrpcErrorToHttp(err, c)
+		return
+	}
+
+	j := middlewares.NewJWT()
+	claims := models.CustomClaims{
+		ID:          uint(rsp.Id),
+		NickName:    rsp.NickName,
+		AuthorityId: uint(rsp.Role),
+		StandardClaims: jwt.StandardClaims{
+			ExpiresAt: time.Now().Unix() + 60*60*24*30,
+			Issuer:    "daodao",
+			NotBefore: time.Now().Unix(),
+		},
+	}
+
+	token, err := j.CreateToken(claims)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"msg": "生成token失败",
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"id":         rsp.Id,
+		"nick_name":  rsp.NickName,
+		"expired_at": (time.Now().Unix() + 60*60*24*30) * 1000,
+		"msg":        "登录成功",
+		"token":      token,
+	})
 }
