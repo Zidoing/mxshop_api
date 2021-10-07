@@ -128,6 +128,14 @@ func PassWordLogin(c *gin.Context) {
 		HandleValidatorError(c, err)
 	}
 
+	if !store.Verify(passwordLoginForm.CaptchaId, passwordLoginForm.Captcha, true) {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"captcha": "图形验证码错误",
+		})
+
+		return
+	}
+
 	userConn, err := grpc.Dial(fmt.Sprintf("%s:%d",
 		global.ServerConfig.UserSrvInfo.Host,
 		global.ServerConfig.UserSrvInfo.Port,

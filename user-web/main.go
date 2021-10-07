@@ -26,9 +26,9 @@ func main() {
 	if ok {
 		_ = v.RegisterValidation("mobile", mx_validator.ValidateMobile)
 		_ = v.RegisterTranslation("mobile", global.Trans, func(ut ut.Translator) error {
-			return ut.Add("required", "{0} 非法的手机号码!", true)
+			return ut.Add("mobile", "{0} 非法的手机号码!", true)
 		}, func(ut ut.Translator, fe validator.FieldError) string {
-			t, _ := ut.T("required", fe.Field())
+			t, _ := ut.T("mobile", fe.Field())
 			return t
 		})
 	}
