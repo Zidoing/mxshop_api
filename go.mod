@@ -13,7 +13,9 @@ require (
 	github.com/go-redis/redis/v8 v8.11.4
 	github.com/golang/protobuf v1.5.2
 	github.com/hashicorp/consul/api v1.10.1
+	github.com/mbobakov/grpc-consul-resolver v1.4.4
 	github.com/mojocn/base64Captcha v1.3.1
+	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/viper v1.9.0
 	go.uber.org/zap v1.19.1
 	google.golang.org/grpc v1.41.0
