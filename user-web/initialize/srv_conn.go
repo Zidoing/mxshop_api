@@ -20,7 +20,7 @@ func (l *grpcLog) V(lvl int) bool {
 	return true
 }
 
-func InitSrvConn() {
+func InitSrvConn() *grpc.ClientConn {
 	logger := logrus.New()
 	grpclog.SetLoggerV2(&grpcLog{logger})
 
@@ -37,14 +37,10 @@ func InitSrvConn() {
 	if err != nil {
 		zap.S().Fatalf("[InitSrvConn] 连接 [用户服务失败]")
 	}
-	defer func(userConn *grpc.ClientConn) {
-		err := userConn.Close()
-		if err != nil {
-			fmt.Println(err)
-		}
-	}(userConn)
 
 	global.UserSrvClient = proto.NewUserClient(userConn)
+
+	return userConn
 }
 
 func InitSrvConn2() {

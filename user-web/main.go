@@ -6,6 +6,7 @@ import (
 	ut "github.com/go-playground/universal-translator"
 	"github.com/go-playground/validator/v10"
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
 	"mxshop_api/user-web/global"
 	"mxshop_api/user-web/initialize"
 	"mxshop_api/user-web/utils"
@@ -18,7 +19,14 @@ func main() {
 	// 初始化配置
 	initialize.InitConfig()
 	// 初始化服务
-	initialize.InitSrvConn()
+	userConn := initialize.InitSrvConn()
+
+	defer func(userConn *grpc.ClientConn) {
+		err := userConn.Close()
+		if err != nil {
+			fmt.Println(err)
+		}
+	}(userConn)
 
 	debug := initialize.GetEnvInfo("MXSHOP_DEBUG")
 	if !debug {
