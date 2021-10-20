@@ -5,12 +5,17 @@ import (
 	"github.com/gin-gonic/gin/binding"
 	ut "github.com/go-playground/universal-translator"
 	"github.com/go-playground/validator/v10"
+	uuid "github.com/satori/go.uuid"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"mxshop_api/user-web/global"
 	"mxshop_api/user-web/initialize"
 	"mxshop_api/user-web/utils"
+	"mxshop_api/user-web/utils/register/consul"
 	mx_validator "mxshop_api/user-web/validator"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
 func main() {
@@ -54,10 +59,33 @@ func main() {
 	}
 
 	// 初始化路由
-	r := initialize.Routers()
-	err = r.Run(fmt.Sprintf(":%d", global.ServerConfig.Port))
-	zap.S().Infof("启动服务器 端口:%d", global.ServerConfig.Port)
+	Router := initialize.Routers()
+
+	//服务注册
+	register_client := consul.NewRegistryClient(global.ServerConfig.ConsulInfo.Host, global.ServerConfig.ConsulInfo.Port)
+	serviceId := fmt.Sprintf("%s", uuid.NewV4())
+	err = register_client.Register(global.ServerConfig.Host, global.ServerConfig.Port, global.ServerConfig.Name, global.ServerConfig.Tags, serviceId)
 	if err != nil {
+		zap.S().Panic("服务注册失败:", err.Error())
+	}
+
+	/*
+		1. S()可以获取一个全局的sugar，可以让我们自己设置一个全局的logger
+		2. 日志是分级别的，debug， info ， warn， error， fetal
+		3. S函数和L函数很有用， 提供了一个全局的安全访问logger的途径
+	*/
+	zap.S().Debugf("启动服务器, 端口： %d", global.ServerConfig.Port)
+	if err := Router.Run(fmt.Sprintf(":%d", global.ServerConfig.Port)); err != nil {
 		zap.S().Panic("启动失败:", err.Error())
 	}
+
+	//接收终止信号
+	quit := make(chan os.Signal)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	//if err = register_client.DeRegister(serviceId); err != nil {
+	//	zap.S().Info("注销失败:", err.Error())
+	//}else{
+	//	zap.S().Info("注销成功:")
+	//}
 }
